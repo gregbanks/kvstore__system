@@ -1,17 +1,100 @@
 {
-  "type": "system",
-  "name": "test",
-
-  "subsystems": [
-    {
-      "$include": {
-        "url": "kvstore-service.json",
-        "parameters": {
-          "NAME": "kvstore",
-          "TAG": "1.0.0",
-          "PUBLIC": true
-        }
-      }
+  "type": "v1/system",
+  "node_pools": {
+    "foo": {
+      "instance_type": "t2.large",
+      "num_instances": 1
     }
-  ]
+  },
+
+  "components": {
+    "ubuntu": {
+      "type": "v1/job",
+
+      "build": {
+        "docker_image": {
+          "registry": "registry.hub.docker.com",
+          "repository": "library/ubuntu",
+          "tag": "latest"
+        }
+      },
+
+      "node_pool": "/:foo"
+    },
+
+    "kvstore": {
+      "type": "v1/service",
+
+      "ports": {
+        "8080": {
+          "protocol": "HTTP",
+          "external_access": {
+            "public": true
+          }
+        }
+      },
+
+      "build": {
+        "git_repository": {
+          "url": "https://github.com/gregbanks/kvstore.git",
+          "tag": "1.0.0"
+        },
+        "language": "node:boron",
+        "command": ["npm", "install"]
+      },
+      "exec": {
+        "command": [
+          "node",
+          "lib/index.js"
+        ],
+        "environment": {
+          "BIND_PORT": "8080",
+          "REDIS_HOST": "redis.local"
+        }
+      },
+      "health_check": {
+        "http": {
+          "port": 8080,
+          "path": "/status"
+        }
+      },
+
+      "num_instances": 1,
+      "node_pool": "/:foo"
+    },
+
+    "redis": {
+      "type": "v1/service",
+
+      "ports": {
+        "6379": {
+          "protocol": "TCP"
+        }
+      },
+
+      "build": {
+        "docker_image": {
+          "registry": "registry.hub.docker.com",
+          "repository": "library/redis",
+          "tag": "latest"
+      },
+
+      "exec": {
+        "command": [
+          "redis-server"
+        ]
+      },
+
+      "health_check": {
+        "exec": {
+          "exec": {
+            "command": ["redis-cli", "PING"]
+          }
+        }
+      },
+
+      "num_instances": 1,
+      "node_pool": "/:foo"
+    }
+  }
 }

@@ -1,0 +1,41 @@
+type: v1/system
+node_pools:
+  foo:
+    instance_type: t2.large
+    num_instances: 1
+components:
+  ubuntu:
+    type: v1/job
+    build:
+      type: docker_image
+      repository: library/ubuntu
+      tag: "18.04"
+    node_pool: /:foo
+  kvstore:
+    type: v1/reference
+    git_repository:
+      url: https://github.com/gregbanks/kvstore.git
+      version: 1.1.x
+      file: lattice.json
+    parameters:
+      node_pool: /:foo
+      num_instances: 1
+  redis:
+    type: v1/service
+    ports:
+      '6379':
+        protocol: TCP
+    build:
+      type: 'docker_image'
+      repository: library/redis
+      tag: latest
+    exec:
+      command:
+      - redis-server
+    health_check:
+      exec:
+        command:
+        - redis-cli
+        - PING
+    num_instances: 1
+    node_pool: /:foo
